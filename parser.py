@@ -52,9 +52,9 @@ def agruparConsulta(comandoSql):
         [a-zA-Z_][a-zA-Z0-9_]*|                           # identificadores (nome de colunas ou tabelas)
         \d+                                               # números inteiros
     """
-
     # Vetor de consulta
     vetorConsulta = re.findall(padrao, comandoSql, re.IGNORECASE | re.VERBOSE)
+    print(vetorConsulta)
     # Operações
     operacoes = []
     i = 0
@@ -68,7 +68,7 @@ def agruparConsulta(comandoSql):
         # Percorre até o fim buscando as operações
         while i<len(vetorConsulta) and stringReservada(vetorConsulta[i]) == False:
             condicao.append(vetorConsulta[i])
-            i+=1 
+            i+=1
         if op.upper() == "SELECT":
             if len(condicao)>0:
                 projecao = Projecao(condicao,None)
@@ -99,12 +99,21 @@ def agruparConsulta(comandoSql):
                 print("Erro de Sintaxe")
                 return
         elif op.upper() == "WHERE":
-            if expressao(condicao):
-                restricao = Restricao(condicao,None)
+            while i<len(vetorConsulta):
+                i+=1
+                condicao.append(vetorConsulta[i])
+            condicoesParciais = []
+            parte = []
+            for elemento in condicao:
+                if elemento.upper() == "AND":
+                    condicoesParciais.append(parte)
+                    parte = []
+                else:
+                    parte.append(elemento)
+            condicoesParciais.append(parte)    
+            for cond in condicoesParciais:
+                restricao = Restricao(cond,None)
                 operacoes.append(restricao)
-            else:
-                print("Erro de Sintaxe")
-                return
     operacoesOrdenadas = sorted(operacoes, key=lambda op: op.ordem)
     return operacoesOrdenadas
 def processarConsulta(comandoSql):
