@@ -1,47 +1,52 @@
-# SELECT
 import re
 
 # Vem depois do FROM
 class Tabela:
-    def __init__(self,condicao):
-        self.condicao = condicao # Nome da Tabela
+    def __init__(self, condicao):
+        self.condicao = condicao  # Nome da Tabela
         self.ordem = 1
+        self.filhos = []  # Adicionei lista de filhos vazia por padrão
+
 # Vem depois do SELECT
 class Projecao:
-    def __init__(self,condicao, filhos):
-        self.condicao = condicao # Nome da(s) coluna(s) separadas por vírgulas
-        self.filhos = filhos # Próximo(s) nó(s)
+    def __init__(self, condicao, filhos=None):
+        self.condicao = condicao  # Nome da(s) coluna(s) separadas por vírgulas
+        self.filhos = filhos if filhos else []  # Próximo(s) nó(s)
         self.ordem = 4
+
 # Vem depois do WHERE
 class Restricao:
-    def __init__(self,condicao, filhos):
-        self.condicao = condicao # Condição da Filtragem
-        self.filhos = filhos # Próximo(s) nó(s)
+    def __init__(self, condicao, filhos=None):
+        self.condicao = condicao  # Condição da Filtragem
+        self.filhos = filhos if filhos else []  # Próximo(s) nó(s)
         self.ordem = 2
+
 # JOIN e ON
 class Juncao:
-    def __init__(self,condicao,tabelaEsq,tabelaDir):
-        self.condicao = condicao # Condição do Join
-        self.tabela1 = tabelaEsq # Tabela da Esquerda
-        self.tabela2 = tabelaDir # Tabela da Direita     
-        self.ordem = 3  
-# Função para localizar palavras reservadas
-def stringReservada(elemento):
-    if elemento.upper() == "FROM" or  elemento.upper() == "INNER JOIN" or elemento.upper() == "JOIN" or elemento.upper() == "WHERE" or elemento.upper() == "SELECT":
+    def __init__(self, condicao, tabelaEsq, tabelaDir, filhos=None):
+        self.condicao = condicao  # Condição do Join
+        self.tabela1 = tabelaEsq  # Tabela da Esquerda
+        self.tabela2 = tabelaDir  # Tabela da Direita
+        self.filhos = filhos if filhos else []
+        self.ordem = 3
+
+def palavrasChave(string):
+    if string.upper() in ["SELECT", "FROM", "JOIN", "INNER JOIN", "ON", "AND"]:
         return True
     else:
         return False
+
 def expressao(arrayCondicao):
-    comparadores = ["<=",">=","<>","=",">","<"]
-    for comparador in comparadores:
-        if comparador in arrayCondicao:
-            index = arrayCondicao.index(comparador)
-            if len(arrayCondicao[:index])>0 and len(arrayCondicao[index+1:])>0:
+    comparadores = ["<=", ">=", "<>", "=", ">", "<"]
+    for i, item in enumerate(arrayCondicao):
+        if item in comparadores:
+            if i > 0 and i < len(arrayCondicao) - 1:
                 return True
             else:
                 return False
     return False
-def agruparConsulta(comandoSql):
+
+def analisarConsulta(comandoSql):
     # Padrões que queremos capturar
     padrao = r"""(?i)              # ignore case
         \bSELECT\b|\bFROM\b|\bWHERE\b|\bINNER?\s*JOIN\b|\bON\b|\bAND\b|   # palavras-chave
@@ -54,67 +59,149 @@ def agruparConsulta(comandoSql):
     """
     # Vetor de consulta
     vetorConsulta = re.findall(padrao, comandoSql, re.IGNORECASE | re.VERBOSE)
-    print(vetorConsulta)
     # Operações
     operacoes = []
     i = 0
-    while i < len(vetorConsulta):
-        # Pesquiso uma operação
-        # Armazenando a operação
-        op = vetorConsulta[i]
+    # Variável que testa se a sintaxe está correta
+    teste = True
+    # Atributos
+    colunas = []
+    tabela1 = None
+    tabela2 = None
+    condicoesJuncao = []
+    condicoesRestricao = []
+    # Primeiro procuro o SELECT no começo
+    if vetorConsulta[i]=="SELECT":
+        # Depois,procuro o FROM após o SELECT
         i+=1
-        # Pesquiso a condição no próximo elemento
-        condicao = []
-        # Percorre até o fim buscando as operações
-        while i<len(vetorConsulta) and stringReservada(vetorConsulta[i]) == False:
-            condicao.append(vetorConsulta[i])
-            i+=1
-        if op.upper() == "SELECT":
-            if len(condicao)>0:
-                projecao = Projecao(condicao,None)
-                operacoes.append(projecao)
-            else:
-                print("Erro de Sintaxe")
-                return
-        elif op.upper() == "FROM":
-            if len(condicao)==1:
-                tabela = Tabela(condicao)
-                operacoes.append(tabela)
-            else:
-                print("Erro de Sintaxe")
-                return
-        elif op.upper() == "INNER JOIN" or op.upper() == "JOIN":
-            # Separando os dados (No caso do Join)
-            if "ON" or "On" or "oN" or "on" in condicao:
-                index = condicao.index("ON" or "On" or "oN" or "on")
-                tabela2 = condicao[:index]
-                nova_condicao = condicao[index+1:]
-                if(tabela2 != None and nova_condicao!=None and tabela.condicao!=None):
-                    juncao = Juncao(nova_condicao,tabela.condicao,tabela2)
-                    operacoes.append(juncao)
-                else:
-                    print("Erro de Sintaxe")
-                    return
-            else:
-                print("Erro de Sintaxe")
-                return
-        elif op.upper() == "WHERE":
-            while i<len(vetorConsulta):
+        if "FROM" in vetorConsulta[i:]:
+            while i<len(vetorConsulta) and vetorConsulta[i].upper()!="FROM":
+                colunas.append(vetorConsulta[i])
                 i+=1
-                condicao.append(vetorConsulta[i])
-            condicoesParciais = []
-            parte = []
-            for elemento in condicao:
-                if elemento.upper() == "AND":
-                    condicoesParciais.append(parte)
-                    parte = []
+            if len(colunas) == 0 or True in map(palavrasChave,colunas):
+                teste=False
+        else:
+            teste=False
+        # Pulando o FROM
+        if teste == True:
+            i+=1
+            # Primeiro elemento após o FROM é a tabela
+            if len(vetorConsulta[i:])>0:
+                tabela1 = vetorConsulta[i:][0]
+                if palavrasChave(tabela1)==True:
+                    teste = False
                 else:
-                    parte.append(elemento)
-            condicoesParciais.append(parte)    
-            for cond in condicoesParciais:
-                restricao = Restricao(cond,None)
-                operacoes.append(restricao)
-    operacoesOrdenadas = sorted(operacoes, key=lambda op: op.ordem)
-    return operacoesOrdenadas
+                    # Pulando a tabela
+                    i+=1
+                    # Verificando se há JOIN
+                    if "JOIN" in vetorConsulta[i:] or "INNER JOIN" in vetorConsulta[i:]:
+                        if vetorConsulta[i:][0] == "JOIN" or vetorConsulta[i:][0] == "INNER JOIN":
+                            i+=1
+                            # Segunda Tabela
+                            tabela2 = vetorConsulta[i:][0]
+                            if palavrasChave(tabela2) == True:
+                                teste = False
+                            else:
+                                i+=1
+                                if "ON" in vetorConsulta[i:]:
+                                    if vetorConsulta[i:][0] == "ON":
+                                        i+=1
+                                        while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE":
+                                            condicoesJuncao.append(vetorConsulta[i])
+                                            i+=1
+                                        if expressao(condicoesJuncao) == True:
+                                            if True in map(palavrasChave,condicoesJuncao):
+                                                teste = False
+                                            else:
+                                                if "WHERE" in vetorConsulta[i:]:
+                                                    if "WHERE" == vetorConsulta[i:][0]:
+                                                        i+=1
+                                                        operacao = []
+                                                        while i<len(vetorConsulta):
+                                                            if vetorConsulta[i]=="AND":
+                                                                condicoesRestricao.append(operacao)
+                                                                operacao = []
+                                                            else:
+                                                                operacao.append(vetorConsulta[i])
+                                                            i+=1
+                                                        condicoesRestricao.append(operacao)
+                                                        for cond in condicoesRestricao:
+                                                            if True in map(palavrasChave,cond) or expressao(cond) == False:
+                                                                teste = False
+                                                                break
+                                                    else:
+                                                        teste = False
+                                                else:
+                                                    if len(vetorConsulta[i:])>0:
+                                                        teste = False
+                                        else:
+                                            teste = False
+                                    else:
+                                        teste=False
+                                else:
+                                    teste = False
+                        else:               
+                            teste = False
+                    else:
+                        # Sem Junção
+                        if "WHERE" in vetorConsulta[i:]:
+                            if "WHERE" == vetorConsulta[i:][0]:
+                                i+=1
+                                operacao = []
+                                while i<len(vetorConsulta):
+                                    if vetorConsulta[i]=="AND":
+                                        condicoesRestricao.append(operacao)
+                                        operacao = []
+                                    else:
+                                        operacao.append(vetorConsulta[i])
+                                    i+=1
+                                condicoesRestricao.append(operacao)
+                                for cond in condicoesRestricao:
+                                    if True in map(palavrasChave,cond) or expressao(cond) == False:
+                                        teste = False
+                                        break
+                            else:
+                                teste = False
+                        else:
+                            if len(vetorConsulta[i:])>0:
+                                teste = False
+            else:
+                teste = False
+    else:
+        teste = False
+        
+    if teste == False:
+        print("Erro de Sintaxe!")
+        return None
+    else:
+        # Criar objetos de nós
+        tabelaEsq = Tabela(tabela1)
+        raiz = None
+        
+        if tabela2 is not None:
+            tabelaDir = Tabela(tabela2)
+            juncao = Juncao(condicoesJuncao, tabelaEsq, tabelaDir)
+            
+            # A junção tem as duas tabelas como entrada
+            if len(condicoesRestricao) > 0:
+                restricao = Restricao(condicoesRestricao)
+                restricao.filhos = [juncao]
+                raiz = Projecao(colunas)
+                raiz.filhos = [restricao]
+            else:
+                raiz = Projecao(colunas)
+                raiz.filhos = [juncao]
+        else:
+            if len(condicoesRestricao) > 0:
+                restricao = Restricao(condicoesRestricao)
+                restricao.filhos = [tabelaEsq]
+                raiz = Projecao(colunas)
+                raiz.filhos = [restricao]
+            else:
+                raiz = Projecao(colunas)
+                raiz.filhos = [tabelaEsq]
+                
+        return raiz
+
 def processarConsulta(comandoSql):
-    operacoes = agruparConsulta(comandoSql)
+    return analisarConsulta(comandoSql)
