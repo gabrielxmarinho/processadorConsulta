@@ -182,3 +182,4 @@ def analisarConsulta(comandoSql):
         return operacoesOrdenadas
 def processarConsulta(comandoSql):
     operacoes = analisarConsulta(comandoSql)
+    return operacoes
