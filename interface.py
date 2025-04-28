@@ -23,7 +23,6 @@ class ConsultaApp:
         self.result_box.pack(padx=10, pady=5)
 
     def percorrerOperacoes(self,raiz):
-        print(raiz.condicao)
         self.result_box.insert(tk.END, f"{type(raiz).__name__}: {raiz.condicao}\n")
         if len(raiz.filhos)>0:
             for filho in raiz.filhos:

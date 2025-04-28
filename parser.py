@@ -44,6 +44,8 @@ def expressao(arrayCondicao):
             else:
                 return False
     return False
+def upper(string):
+    return string.upper()
 def analisarConsulta(comandoSql):
     # Padrões que queremos capturar
     padrao = r"""(?i)              # ignore case
@@ -57,6 +59,7 @@ def analisarConsulta(comandoSql):
     """
     # Vetor de consulta
     vetorConsulta = re.findall(padrao, comandoSql, re.IGNORECASE | re.VERBOSE)
+    print(vetorConsulta)
     # Operações
     operacoes = []
     i = 0
@@ -69,10 +72,10 @@ def analisarConsulta(comandoSql):
     condicoesJuncao = []
     condicoesRestricao = []
     # Primeiro procuro o SELECT no começo
-    if vetorConsulta[i]=="SELECT":
+    if vetorConsulta[i].upper()=="SELECT":
         # Depois,procuro o FROM após o SELECT
         i+=1
-        if "FROM" in vetorConsulta[i:]:
+        if "FROM" in map(upper,vetorConsulta[i:]):
             while i<len(vetorConsulta) and vetorConsulta[i].upper()!="FROM":
                 colunas.append(vetorConsulta[i])
                 i+=1
@@ -92,8 +95,8 @@ def analisarConsulta(comandoSql):
                     # Pulando a tabela
                     i+=1
                     # Verificando se há JOIN
-                    if "JOIN" in vetorConsulta[i:] or "INNER JOIN" in vetorConsulta[i:]:
-                        if vetorConsulta[i:][0] == "JOIN" or vetorConsulta[i:][0] == "INNER JOIN":
+                    if "JOIN" in map(upper,vetorConsulta[i:]) or "INNER JOIN" in map(upper,vetorConsulta[i:]):
+                        if vetorConsulta[i:][0].upper() == "JOIN" or vetorConsulta[i:][0].upper() == "INNER JOIN":
                             i+=1
                             # Segunda Tabela
                             tabela2 = vetorConsulta[i:][0]
@@ -101,8 +104,8 @@ def analisarConsulta(comandoSql):
                                 teste = False
                             else:
                                 i+=1
-                                if "ON" in vetorConsulta[i:]:
-                                    if vetorConsulta[i:][0] == "ON":
+                                if "ON" in  map(upper,vetorConsulta[i:]):
+                                    if vetorConsulta[i:][0].upper() == "ON":
                                         i+=1
                                         while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE":
                                             condicoesJuncao.append(vetorConsulta[i])
@@ -111,12 +114,12 @@ def analisarConsulta(comandoSql):
                                             if True in map(palavrasChave,condicoesJuncao):
                                                 teste = False
                                             else:
-                                                if "WHERE" in vetorConsulta[i:]:
-                                                    if "WHERE" == vetorConsulta[i:][0]:
+                                                if "WHERE" in map(upper,vetorConsulta[i:]):
+                                                    if "WHERE" == vetorConsulta[i:][0].upper():
                                                         i+=1
                                                         operacao = []
                                                         while i<len(vetorConsulta):
-                                                            if vetorConsulta[i]=="AND":
+                                                            if vetorConsulta[i].upper()=="AND":
                                                                 condicoesRestricao.append(operacao)
                                                                 operacao = []
                                                             else:
@@ -142,12 +145,12 @@ def analisarConsulta(comandoSql):
                             teste = False
                     else:
                         # Sem Junção
-                        if "WHERE" in vetorConsulta[i:]:
-                            if "WHERE" == vetorConsulta[i:][0]:
+                        if "WHERE" in map(upper,vetorConsulta[i:]):
+                            if "WHERE" == vetorConsulta[i:][0].upper():
                                 i+=1
                                 operacao = []
                                 while i<len(vetorConsulta):
-                                    if vetorConsulta[i]=="AND":
+                                    if vetorConsulta[i].upper()=="AND":
                                         condicoesRestricao.append(operacao)
                                         operacao = []
                                     else:
@@ -168,6 +171,7 @@ def analisarConsulta(comandoSql):
     else:
         teste = False
     if teste == False:
+        print(i)
         print("Erro de Sintaxe!")
     else:
         # Criar objetos de nós
