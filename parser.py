@@ -196,7 +196,7 @@ def analisarConsulta(comandoSql):
             else:
                 raiz = Projecao(colunas)
                 raiz.filhos = [tabelaEsq]
-                
+        
         return raiz
 def processarConsulta(comandoSql):
     return analisarConsulta(comandoSql)
