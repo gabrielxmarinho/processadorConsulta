@@ -3,29 +3,33 @@ import re
 
 # Vem depois do FROM
 class Tabela:
-    def __init__(self,condicao):
-        self.condicao = condicao # Nome da Tabela
+    def __init__(self, condicao):
+        self.condicao = condicao  # Nome da Tabela
         self.ordem = 1
+        self.filhos = []  # Adicionei lista de filhos vazia por padrão
+
 # Vem depois do SELECT
 class Projecao:
-    def __init__(self,condicao, filhos):
-        self.condicao = condicao # Nome da(s) coluna(s) separadas por vírgulas
-        self.filhos = filhos # Próximo(s) nó(s)
+    def __init__(self, condicao, filhos=None):
+        self.condicao = condicao  # Nome da(s) coluna(s) separadas por vírgulas
+        self.filhos = filhos if filhos else []  # Próximo(s) nó(s)
         self.ordem = 4
+
 # Vem depois do WHERE
 class Restricao:
-    def __init__(self,condicao, filhos):
-        self.condicao = condicao # Condição da Filtragem
-        self.filhos = filhos # Próximo(s) nó(s)
+    def __init__(self, condicao, filhos=None):
+        self.condicao = condicao  # Condição da Filtragem
+        self.filhos = filhos if filhos else []  # Próximo(s) nó(s)
         self.ordem = 2
+
 # JOIN e ON
 class Juncao:
-    def __init__(self,condicao,tabelaEsq,tabelaDir,filhos):
-        self.condicao = condicao # Condição do Join
-        self.tabela1 = tabelaEsq # Tabela da Esquerda
-        self.tabela2 = tabelaDir # Tabela da Direita
-        self.filhos = filhos     
-        self.ordem = 3  
+    def __init__(self, condicao, tabelaEsq, tabelaDir, filhos=None):
+        self.condicao = condicao  # Condição do Join
+        self.tabela1 = tabelaEsq  # Tabela da Esquerda
+        self.tabela2 = tabelaDir  # Tabela da Direita
+        self.filhos = filhos if filhos else []
+        self.ordem = 3
 def palavrasChave(string):
     if string.upper() == "SELECT" or string.upper() == "FROM" or string.upper() == "JOIN" or string.upper() == "INNER JOIN" or string.upper() == "ON" or string.upper() == "AND":
         return True
@@ -166,19 +170,33 @@ def analisarConsulta(comandoSql):
     if teste == False:
         print("Erro de Sintaxe!")
     else:
-        # Processar
-        projecao = Projecao(colunas,None)
+        # Criar objetos de nós
         tabelaEsq = Tabela(tabela1)
-        operacoes = [projecao,tabelaEsq]
-        if tabela2 != None:
+        raiz = None
+        
+        if tabela2 is not None:
             tabelaDir = Tabela(tabela2)
-            juncao = Juncao(condicoesJuncao,tabelaEsq,tabelaDir,None)
-            operacoes.append(tabelaDir)
-            operacoes.append(juncao)
-        if len(condicoesRestricao)>0:
-            restricao = Restricao(condicoesRestricao,None)
-            operacoes.append(restricao)
-        operacoesOrdenadas = sorted(operacoes, key=lambda op: op.ordem)
-        return operacoesOrdenadas
+            juncao = Juncao(condicoesJuncao, tabelaEsq, tabelaDir)
+            
+            # A junção tem as duas tabelas como entrada
+            if len(condicoesRestricao) > 0:
+                restricao = Restricao(condicoesRestricao)
+                restricao.filhos = [juncao]
+                raiz = Projecao(colunas)
+                raiz.filhos = [restricao]
+            else:
+                raiz = Projecao(colunas)
+                raiz.filhos = [juncao]
+        else:
+            if len(condicoesRestricao) > 0:
+                restricao = Restricao(condicoesRestricao)
+                restricao.filhos = [tabelaEsq]
+                raiz = Projecao(colunas)
+                raiz.filhos = [restricao]
+            else:
+                raiz = Projecao(colunas)
+                raiz.filhos = [tabelaEsq]
+                
+        return raiz
 def processarConsulta(comandoSql):
-    operacoes = analisarConsulta(comandoSql)
+    return analisarConsulta(comandoSql)
