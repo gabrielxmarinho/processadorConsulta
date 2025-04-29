@@ -36,14 +36,18 @@ def palavrasChave(string):
     else:
         return False
 def expressao(arrayCondicao):
+    cont = 0
     comparadores = ["<=", ">=", "<>", "=", ">", "<"]
     for i, item in enumerate(arrayCondicao):
         if item in comparadores:
             if i > 0 and i < len(arrayCondicao) - 1:
-                return True
+                cont+=1
             else:
                 return False
-    return False
+    if cont == 1:
+        return True
+    else:
+        return False
 def upper(string):
     return string.upper()
 def analisarConsulta(comandoSql):
@@ -59,7 +63,6 @@ def analisarConsulta(comandoSql):
     """
     # Vetor de consulta
     vetorConsulta = re.findall(padrao, comandoSql, re.IGNORECASE | re.VERBOSE)
-    print(vetorConsulta)
     # Operações
     operacoes = []
     i = 0
@@ -171,7 +174,6 @@ def analisarConsulta(comandoSql):
     else:
         teste = False
     if teste == False:
-        print(i)
         print("Erro de Sintaxe!")
     else:
         # Criar objetos de nós
