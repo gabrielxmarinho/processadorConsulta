@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
-import parser  # Certifique-se que o nome do arquivo é exatamente parser.py
+import parser  
+from drawer import desenharGrafo
 
 class ConsultaApp:
     def __init__(self, root):
@@ -35,6 +36,7 @@ class ConsultaApp:
             self.result_box.delete("1.0", tk.END)
             if resultado:
                 self.percorrerOperacoes(resultado)
+                desenharGrafo(resultado)
             else:
                 self.result_box.insert(tk.END, "Nenhuma operação reconhecida ou consulta inválida.")
             self.result_box.config(state="disabled")
