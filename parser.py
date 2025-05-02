@@ -24,11 +24,11 @@ class Restricao:
 
 # JOIN e ON
 class Juncao:
-    def __init__(self, condicao, tabelaEsq, tabelaDir, filhos=None):
+    def __init__(self, condicao, tabelaEsq, tabelaDir):
         self.condicao = condicao  # Condição do Join
         self.tabela1 = tabelaEsq  # Tabela da Esquerda
         self.tabela2 = tabelaDir  # Tabela da Direita
-        self.filhos = filhos if filhos else []
+        self.filhos = [tabelaEsq,tabelaDir]
         self.ordem = 3
 def palavrasChave(string):
     if string.upper() == "SELECT" or string.upper() == "FROM" or string.upper() == "JOIN" or string.upper() == "INNER JOIN" or string.upper() == "ON" or string.upper() == "AND":
@@ -70,8 +70,7 @@ def analisarConsulta(comandoSql):
     teste = True
     # Atributos
     colunas = []
-    tabela1 = None
-    tabela2 = None
+    tabelas = []
     condicoesJuncao = []
     condicoesRestricao = []
     # Primeiro procuro o SELECT no começo
@@ -91,60 +90,71 @@ def analisarConsulta(comandoSql):
             i+=1
             # Primeiro elemento após o FROM é a tabela
             if len(vetorConsulta[i:])>0:
-                tabela1 = vetorConsulta[i:][0]
-                if palavrasChave(tabela1)==True:
+                tabelas.append(vetorConsulta[i:][0])
+                if palavrasChave(tabelas[len(tabelas)-1])==True:
                     teste = False
                 else:
                     # Pulando a tabela
                     i+=1
                     # Verificando se há JOIN
                     if "JOIN" in map(upper,vetorConsulta[i:]) or "INNER JOIN" in map(upper,vetorConsulta[i:]):
-                        if vetorConsulta[i:][0].upper() == "JOIN" or vetorConsulta[i:][0].upper() == "INNER JOIN":
-                            i+=1
-                            # Segunda Tabela
-                            tabela2 = vetorConsulta[i:][0]
-                            if palavrasChave(tabela2) == True:
+                        while i<len(vetorConsulta) and ("JOIN" in map(upper,vetorConsulta[i:]) or "INNER JOIN" in map(upper,vetorConsulta[i:])):
+                            if vetorConsulta[i:][0].upper() == "JOIN" or vetorConsulta[i:][0].upper() == "INNER JOIN":
+                                i+=1
+                                # Segunda Tabela
+                                tabelas.append(vetorConsulta[i:][0])
+                                if palavrasChave(tabelas[len(tabelas)-1]) == True:
+                                    teste = False
+                                    break
+                                else:
+                                    i+=1
+                                    if "ON" in  map(upper,vetorConsulta[i:]):
+                                        if vetorConsulta[i:][0].upper() == "ON":
+                                            i+=1
+                                            condicao = []
+                                            while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE" and vetorConsulta[i].upper()!="JOIN" and vetorConsulta[i].upper()!="INNER JOIN":
+                                                condicao.append(vetorConsulta[i])
+                                                i+=1
+                                            condicoesJuncao.append(condicao)
+                                        else:
+                                            teste=False
+                                            break
+                                    else:
+                                        teste = False
+                                        break
+                            else:
+                                teste=False
+                                break
+                        if teste == True:
+                            if False in map(expressao,condicoesJuncao):
                                 teste = False
                             else:
-                                i+=1
-                                if "ON" in  map(upper,vetorConsulta[i:]):
-                                    if vetorConsulta[i:][0].upper() == "ON":
-                                        i+=1
-                                        while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE":
-                                            condicoesJuncao.append(vetorConsulta[i])
-                                            i+=1
-                                        if expressao(condicoesJuncao) == True:
-                                            if True in map(palavrasChave,condicoesJuncao):
-                                                teste = False
-                                            else:
-                                                if "WHERE" in map(upper,vetorConsulta[i:]):
-                                                    if "WHERE" == vetorConsulta[i:][0].upper():
-                                                        i+=1
-                                                        operacao = []
-                                                        while i<len(vetorConsulta):
-                                                            if vetorConsulta[i].upper()=="AND":
-                                                                condicoesRestricao.append(operacao)
-                                                                operacao = []
-                                                            else:
-                                                                operacao.append(vetorConsulta[i])
-                                                            i+=1
-                                                        condicoesRestricao.append(operacao)
-                                                        for cond in condicoesRestricao:
-                                                            if True in map(palavrasChave,cond) or expressao(cond) == False:
-                                                                teste = False
-                                                                break
-                                                    else:
-                                                        teste = False
-                                                else:
-                                                    if len(vetorConsulta[i:])>0:
-                                                        teste = False
-                                        else:
-                                            teste = False
+                                for condicao in condicoesJuncao:
+                                    if True in map(palavrasChave,condicao):
+                                        teste = False
                                     else:
-                                        teste=False
-                                else:
-                                    teste = False
-                        else:               
+                                        if "WHERE" in map(upper,vetorConsulta[i:]):
+                                            if "WHERE" == vetorConsulta[i:][0].upper():
+                                                i+=1
+                                                operacao = []
+                                                while i<len(vetorConsulta):
+                                                    if vetorConsulta[i].upper()=="AND":
+                                                        condicoesRestricao.append(operacao)
+                                                        operacao = []
+                                                    else:
+                                                        operacao.append(vetorConsulta[i])
+                                                    i+=1
+                                                condicoesRestricao.append(operacao)
+                                                for cond in condicoesRestricao:
+                                                    if True in map(palavrasChave,cond) or expressao(cond) == False:
+                                                        teste = False
+                                                        break
+                                            else:
+                                                teste = False
+                                        else:
+                                            if len(vetorConsulta[i:])>0:
+                                                teste = False
+                        else:
                             teste = False
                     else:
                         # Sem Junção
@@ -176,7 +186,35 @@ def analisarConsulta(comandoSql):
     if teste == False:
         print("Erro de Sintaxe!")
     else:
-        # Criar objetos de nós
+        return processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao)
+def processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao):
+    # As restrições são feitas uma única vez (Não Otimizado)
+    tabelaEsq = Tabela(tabelas[0])
+    # Verificando se há mais de uma tabela(E consequentemente Junção)
+    if len(tabelas)>1:
+        # Junções
+        # Contador i para a tabela da direita
+        i = 0
+        for condicao in reversed(condicoesJuncao):
+            tabelaDir = Tabela(tabelas[i+1])
+            juncao = Juncao(condicao,tabelaEsq,tabelaDir)
+            tabelaEsq = juncao
+            i+=1
+        if len(condicoesRestricao)>0:
+            restricao = Restricao(condicoesRestricao,[juncao])
+            raiz = Projecao(colunas,[restricao])
+        else:
+            raiz = Projecao(colunas,[juncao])
+    else:
+        # Não há Junção
+        if len(condicoesRestricao)>0:
+            restricao = Restricao(condicoesRestricao,[tabelaEsq])
+            raiz = Projecao(colunas,[restricao])
+        else:
+            raiz = Projecao(colunas,[tabelaEsq])
+    return raiz
+def processamentoOtimizado(colunas,tabela1,tabela2,condicoesJuncao,condicoesRestricao):
+    # Criar objetos de nós
         tabelaEsq = Tabela(tabela1)
         raiz = None
         
@@ -204,5 +242,6 @@ def analisarConsulta(comandoSql):
                 raiz.filhos = [tabelaEsq]
         
         return raiz
+
 def processarConsulta(comandoSql):
     return analisarConsulta(comandoSql)
