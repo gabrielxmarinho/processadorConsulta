@@ -48,6 +48,19 @@ def expressao(arrayCondicao):
         return True
     else:
         return False
+# Entidades do banco de dados
+entidades = {
+    "endereco":["idEndereco","EnderecoPadrao","Logradouro","Numero","Complemento","Bairro","Cidade","UF","CEP","TipoEndereco_idTipoEndereco","Cliente_idCliente"],
+    "cliente":["idCliente","Nome","Email","Nascimento","Senha","TipoCliente_idTipoCliente","DataRegistro"],
+    "pedido":["idPedido","Status_idStatus","DataPedido","ValorTotalPedido","Cliente_idCliente"],
+    "produto":["idProduto","Nome","Descricao","Preco","QuantEstoque","Categoria_idCategoria"],
+    "tipoendereco":["idTipoEndereco","Descricao"],
+    "tipocliente":["idTipoCliente","Descricao"],
+    "telefone":["Numero","Cliente_idCliente"],
+    "status":["idStatus","Descricao"],
+    "pedido_das_produto":["idPedidoProduto", "Pedido_idPedido","Produto_idProduto","Quantidade","PrecoUnitario"],
+    "categoria":["idCategoria","Descricao"]
+}
 def upper(string):
     return string.upper()
 def analisarConsulta(comandoSql):
@@ -91,7 +104,7 @@ def analisarConsulta(comandoSql):
             # Primeiro elemento após o FROM é a tabela
             if len(vetorConsulta[i:])>0:
                 tabelas.append(vetorConsulta[i:][0])
-                if palavrasChave(tabelas[len(tabelas)-1])==True:
+                if palavrasChave(tabelas[len(tabelas)-1])==True and hasattr(entidades,tabelas[len(tabelas)-1]): 
                     teste = False
                 else:
                     # Pulando a tabela
@@ -103,19 +116,36 @@ def analisarConsulta(comandoSql):
                                 i+=1
                                 # Segunda Tabela
                                 tabelas.append(vetorConsulta[i:][0])
-                                if palavrasChave(tabelas[len(tabelas)-1]) == True:
+                                if palavrasChave(tabelas[len(tabelas)-1]) == True and hasattr(entidades,tabelas[len(tabelas)-1]):
                                     teste = False
                                     break
                                 else:
                                     i+=1
-                                    if "ON" in  map(upper,vetorConsulta[i:]):
+                                    if "ON" in map(upper,vetorConsulta[i:]):
                                         if vetorConsulta[i:][0].upper() == "ON":
                                             i+=1
                                             condicao = []
                                             while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE" and vetorConsulta[i].upper()!="JOIN" and vetorConsulta[i].upper()!="INNER JOIN":
                                                 condicao.append(vetorConsulta[i])
                                                 i+=1
-                                            condicoesJuncao.append(condicao)
+                                            j=0
+                                            indiceTabela =0
+                                            comparadores = ["<=", ">=", "<>", "=", ">", "<"]
+                                            while j<len(condicao):
+                                                if hasattr(entidades, condicao[j]):
+                                                    j+=1
+                                                    if condicao[j] in entidades[tabelas[indiceTabela]]:
+                                                        indiceTabela+=1
+                                                        j+=1
+                                                elif condicao[j] in entidades[tabelas[indiceTabela]]:
+                                                        indiceTabela+=1
+                                                        j+=1
+                                                else:
+                                                    j+=1
+                                            if indiceTabela != 2:
+                                                teste=False
+                                            else:
+                                                condicoesJuncao.append(condicao)
                                         else:
                                             teste=False
                                             break

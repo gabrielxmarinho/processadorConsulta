@@ -18,20 +18,20 @@ def desenharGrafo(raiz):
 
         # Nome legível para exibir
         if isinstance(no, Projecao):
-            texto = f"PROJEÇÃO({','.join(no.condicao)})"
+            texto = f"π({','.join(no.condicao)})"
         elif isinstance(no, Restricao):
             # Formatar condições de restrição
             condicoes = []
             for cond in no.condicao:
                 condicoes.append(' '.join(cond))
-            texto = f"RESTRIÇÃO({' AND '.join(condicoes)})"
+            texto = f"σ({' AND '.join(condicoes)})"
         elif isinstance(no, Juncao):
             # Formatar condição de junção
             if isinstance(no.tabela1,Tabela):
-                texto = f"JUNÇÃO({no.tabela1.condicao} ⨝ {no.tabela2.condicao} ON {' '.join(no.condicao)})"
+                texto = f"{no.tabela1.condicao} |X| {no.tabela2.condicao} ON {' '.join(no.condicao)}"
             else:
                 # Não mostro a primeira tabela(Não tem nome)
-                texto = f"JUNÇÃO( ⨝ {no.tabela2.condicao} ON {' '.join(no.condicao)})"
+                texto = f"|X| {no.tabela2.condicao} ON {' '.join(no.condicao)})"
         elif isinstance(no, Tabela):
             texto = f"TABELA({no.condicao})"
         else:
