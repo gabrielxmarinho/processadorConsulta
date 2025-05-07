@@ -247,7 +247,7 @@ def analisarConsulta(comandoSql):
                     print(f"Erro: coluna ou valor inválido na cláusula WHERE: '{token}'")
                     return
 
-        return processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao)
+        return [processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao),processamentoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao)]
 def processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao):
     # As restrições são feitas uma única vez (Não Otimizado)
     tabelaEsq = Tabela(tabelas[0])
@@ -274,35 +274,43 @@ def processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao
         else:
             raiz = Projecao(colunas,[tabelaEsq])
     return raiz
-def processamentoOtimizado(colunas,tabela1,tabela2,condicoesJuncao,condicoesRestricao):
-    # Criar objetos de nós
-        tabelaEsq = Tabela(tabela1)
-        raiz = None
-        
-        if tabela2 is not None:
-            tabelaDir = Tabela(tabela2)
-            juncao = Juncao(condicoesJuncao, tabelaEsq, tabelaDir)
-            
-            # A junção tem as duas tabelas como entrada
-            if len(condicoesRestricao) > 0:
-                restricao = Restricao(condicoesRestricao)
-                restricao.filhos = [juncao]
-                raiz = Projecao(colunas)
-                raiz.filhos = [restricao]
+def processamentoOtimizado(colunas, tabelas, condicoesJuncao, condicoesRestricao):
+    # Mapeia as restrições para as tabelas corretas
+    restricoes_por_tabela = {t: [] for t in tabelas}
+    for cond in condicoesRestricao:
+        for token in cond:
+            if "." in token:
+                nome_tabela = token.split(".")[0]
+                if nome_tabela in restricoes_por_tabela:
+                    restricoes_por_tabela[nome_tabela].append(cond)
+                    break
             else:
-                raiz = Projecao(colunas)
-                raiz.filhos = [juncao]
-        else:
-            if len(condicoesRestricao) > 0:
-                restricao = Restricao(condicoesRestricao)
-                restricao.filhos = [tabelaEsq]
-                raiz = Projecao(colunas)
-                raiz.filhos = [restricao]
-            else:
-                raiz = Projecao(colunas)
-                raiz.filhos = [tabelaEsq]
-        
-        return raiz
+                # Restrição sem tabela explícita, tentar inferir
+                for t in tabelas:
+                    if token in entidades[t]:
+                        restricoes_por_tabela[t].append(cond)
+                        break
 
+    # Cria os nós de tabela com restrições individuais
+    objetosTabela = {}
+    for nome in tabelas:
+        tabela_node = Tabela(nome)
+        restricoes = restricoes_por_tabela[nome]
+        if restricoes:
+            tabela_node = Restricao(restricoes, [tabela_node])
+        objetosTabela[nome] = tabela_node
+
+    # Combina tabelas via junção, reutilizando objetos com restrições aplicadas
+    tabelaEsq = objetosTabela[tabelas[0]]
+    i = 0
+    for condicao in reversed(condicoesJuncao):
+        tabelaDir = objetosTabela[tabelas[i+1]]
+        juncao = Juncao(condicao, tabelaEsq, tabelaDir)
+        tabelaEsq = juncao
+        i += 1
+
+    # Cria projeção final no topo
+    raiz = Projecao(colunas, [tabelaEsq])
+    return raiz
 def processarConsulta(comandoSql):
     return analisarConsulta(comandoSql)

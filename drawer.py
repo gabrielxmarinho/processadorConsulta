@@ -26,12 +26,19 @@ def desenharGrafo(raiz):
                 condicoes.append(' '.join(cond))
             texto = f"σ({' AND '.join(condicoes)})"
         elif isinstance(no, Juncao):
-            # Formatar condição de junção
-            if isinstance(no.tabela1,Tabela):
-                texto = f"{no.tabela1.condicao} |X| {no.tabela2.condicao} ON {' '.join(no.condicao)}"
-            else:
-                # Não mostro a primeira tabela(Não tem nome)
-                texto = f"|X| {no.tabela2.condicao} ON {' '.join(no.condicao)})"
+            def extrairNomeTabela(obj):
+                if isinstance(obj, Tabela):
+                    return obj.condicao
+                elif isinstance(obj, Restricao) and obj.filhos and isinstance(obj.filhos[0], Tabela):
+                    return obj.filhos[0].condicao
+                elif hasattr(obj, 'condicao'):
+                    return f"{type(obj).__name__}"
+                else:
+                    return "?"
+
+            nomeEsq = extrairNomeTabela(no.tabela1)
+            nomeDir = extrairNomeTabela(no.tabela2)
+            texto = f"{nomeEsq} |X| {nomeDir} ON {' '.join(no.condicao)}"
         elif isinstance(no, Tabela):
             texto = f"TABELA({no.condicao})"
         else:

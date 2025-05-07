@@ -35,8 +35,9 @@ class ConsultaApp:
             self.result_box.config(state="normal")
             self.result_box.delete("1.0", tk.END)
             if resultado:
-                self.percorrerOperacoes(resultado)
-                desenharGrafo(resultado)
+                # Usa list no map para vencer a preguiça
+                list(map(self.percorrerOperacoes,resultado))
+                list(map(desenharGrafo, resultado))
             else:
                 self.result_box.insert(tk.END, "Nenhuma operação reconhecida ou consulta inválida.")
             self.result_box.config(state="disabled")
