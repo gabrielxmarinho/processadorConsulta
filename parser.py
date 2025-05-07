@@ -237,8 +237,14 @@ def analisarConsulta(comandoSql):
         # Verificar colunas nas condições de restrição
         for cond in condicoesRestricao:
             for token in cond:
-                if token not in ["=", "<", ">", "<=", ">=", "<>", "AND"] and not coluna_valida(token, entidades_usadas):
-                    print(f"Erro: coluna '{token}' na cláusula WHERE não é válida.")
+                if token.upper() in ["=", "<", ">", "<=", ">=", "<>", "AND"]:
+                    continue
+                if re.match(r"^'.*'$", token):  # valor string entre aspas
+                    continue
+                if re.match(r"^\d+(\.\d+)?$", token):  # número inteiro ou decimal
+                    continue
+                if not coluna_valida(token, entidades_usadas):
+                    print(f"Erro: coluna ou valor inválido na cláusula WHERE: '{token}'")
                     return
 
         return processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao)
