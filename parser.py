@@ -50,17 +50,18 @@ def expressao(arrayCondicao):
         return False
 # Entidades do banco de dados
 entidades = {
-    "endereco":["idEndereco","EnderecoPadrao","Logradouro","Numero","Complemento","Bairro","Cidade","UF","CEP","TipoEndereco_idTipoEndereco","Cliente_idCliente"],
-    "cliente":["idCliente","Nome","Email","Nascimento","Senha","TipoCliente_idTipoCliente","DataRegistro"],
-    "pedido":["idPedido","Status_idStatus","DataPedido","ValorTotalPedido","Cliente_idCliente"],
-    "produto":["idProduto","Nome","Descricao","Preco","QuantEstoque","Categoria_idCategoria"],
-    "tipoendereco":["idTipoEndereco","Descricao"],
-    "tipocliente":["idTipoCliente","Descricao"],
-    "telefone":["Numero","Cliente_idCliente"],
-    "status":["idStatus","Descricao"],
-    "pedido_das_produto":["idPedidoProduto", "Pedido_idPedido","Produto_idProduto","Quantidade","PrecoUnitario"],
-    "categoria":["idCategoria","Descricao"]
+    "endereco":{"idEndereco":int,"EnderecoPadrao":int,"Logradouro":str,"Numero":str,"Complemento":str,"Bairro":str,"Cidade":str,"UF":str,"CEP":str,"TipoEndereco_idTipoEndereco":int,"Cliente_idCliente":int},
+    "cliente":{"idCliente":int,"Nome":str,"Email":str,"Nascimento":str,"Senha":str,"TipoCliente_idTipoCliente":int,"DataRegistro":str},
+    "pedido":{"idPedido":int,"Status_idStatus":int,"DataPedido":str,"ValorTotalPedido":float,"Cliente_idCliente":int},
+    "produto":{"idProduto":int,"Nome":str,"Descricao":str,"Preco":float,"QuantEstoque":float,"Categoria_idCategoria":int},
+    "tipoendereco":{"idTipoEndereco":int,"Descricao":str},
+    "tipocliente":{"idTipoCliente":int,"Descricao":str},
+    "telefone":{"Numero":str,"Cliente_idCliente":int},
+    "status":{"idStatus":int,"Descricao":str},
+    "pedido_das_produto":{"idPedidoProduto":int, "Pedido_idPedido":int,"Produto_idProduto":int,"Quantidade":float,"PrecoUnitario":float},
+    "categoria":{"idCategoria":int,"Descricao":str}
 }
+
 def upper(string):
     return string.upper()
 def analisarConsulta(comandoSql):
@@ -104,7 +105,7 @@ def analisarConsulta(comandoSql):
             # Primeiro elemento após o FROM é a tabela
             if len(vetorConsulta[i:])>0:
                 tabelas.append(vetorConsulta[i:][0])
-                if palavrasChave(tabelas[len(tabelas)-1])==True and hasattr(entidades,tabelas[len(tabelas)-1]): 
+                if palavrasChave(tabelas[len(tabelas)-1])==True: 
                     teste = False
                 else:
                     # Pulando a tabela
@@ -116,7 +117,7 @@ def analisarConsulta(comandoSql):
                                 i+=1
                                 # Segunda Tabela
                                 tabelas.append(vetorConsulta[i:][0])
-                                if palavrasChave(tabelas[len(tabelas)-1]) == True and hasattr(entidades,tabelas[len(tabelas)-1]):
+                                if palavrasChave(tabelas[len(tabelas)-1]) == True:
                                     teste = False
                                     break
                                 else:
@@ -128,24 +129,8 @@ def analisarConsulta(comandoSql):
                                             while i<len(vetorConsulta) and vetorConsulta[i].upper()!="WHERE" and vetorConsulta[i].upper()!="JOIN" and vetorConsulta[i].upper()!="INNER JOIN":
                                                 condicao.append(vetorConsulta[i])
                                                 i+=1
-                                            j=0
-                                            indiceTabela =0
-                                            comparadores = ["<=", ">=", "<>", "=", ">", "<"]
-                                            while j<len(condicao):
-                                                if hasattr(entidades, condicao[j]):
-                                                    j+=1
-                                                    if condicao[j] in entidades[tabelas[indiceTabela]]:
-                                                        indiceTabela+=1
-                                                        j+=1
-                                                elif condicao[j] in entidades[tabelas[indiceTabela]]:
-                                                        indiceTabela+=1
-                                                        j+=1
-                                                else:
-                                                    j+=1
-                                            if indiceTabela != 2:
-                                                teste=False
-                                            else:
-                                                condicoesJuncao.append(condicao)
+                                            
+                                            condicoesJuncao.append(condicao)
                                         else:
                                             teste=False
                                             break
@@ -216,6 +201,46 @@ def analisarConsulta(comandoSql):
     if teste == False:
         print("Erro de Sintaxe!")
     else:
+        # Verificação das entidades e colunas
+        entidades_usadas = set(map(str.lower, tabelas))
+        for tabela in entidades_usadas:
+            if tabela not in entidades:
+                print(f"Erro: entidade '{tabela}' não existe.")
+                return
+
+        # Função auxiliar para verificar se uma coluna pertence a alguma tabela usada
+        def coluna_valida(col, entidades_usadas):
+            if "." in col:
+                tabela_nome, coluna_nome = col.split(".", 1)
+                tabela_nome = tabela_nome.lower()
+                if tabela_nome in entidades:
+                    return coluna_nome in entidades[tabela_nome]
+                return False
+            else:
+                # verificar se aparece em uma e somente uma tabela (sem ambiguidade)
+                tabelas_com_coluna = [t for t in entidades_usadas if col in entidades[t]]
+                return len(tabelas_com_coluna) == 1
+
+        # Verificar colunas do SELECT
+        for col in colunas:
+            if col != "*" and not coluna_valida(col, entidades_usadas):
+                print(f"Erro: coluna '{col}' não é válida ou é ambígua.")
+                return
+
+        # Verificar colunas nas condições de junção
+        for cond in condicoesJuncao:
+            for token in cond:
+                if token not in ["=", "<", ">", "<=", ">=", "<>", "AND", "ON"] and not coluna_valida(token, entidades_usadas):
+                    print(f"Erro: coluna '{token}' na cláusula ON não é válida.")
+                    return
+
+        # Verificar colunas nas condições de restrição
+        for cond in condicoesRestricao:
+            for token in cond:
+                if token not in ["=", "<", ">", "<=", ">=", "<>", "AND"] and not coluna_valida(token, entidades_usadas):
+                    print(f"Erro: coluna '{token}' na cláusula WHERE não é válida.")
+                    return
+
         return processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao)
 def processamentoNaoOtimizado(colunas,tabelas,condicoesJuncao,condicoesRestricao):
     # As restrições são feitas uma única vez (Não Otimizado)

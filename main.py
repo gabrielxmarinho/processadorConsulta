@@ -2,7 +2,7 @@ from parser import analisarConsulta, processarConsulta
 from drawer import desenharGrafo
 
 # Consulta SQL de exemplo 
-sql = "SELECT nome FROM alunos INNER JOIN enderecos ON pessoas.id=enderecos.aluno_id INNER JOIN matriculas ON matriculas.aluno_id = alunos.id WHERE idade = 18 AND aluno_id = 2"
+sql = "SELECT Descricao FROM cliente INNER JOIN endereco ON Cliente_idCliente = idCliente INNER JOIN tipoendereco ON idTipoEndereco = TipoEndereco_idTipoEndereco"
 
 # Processar a consulta e obter a raiz da árvore de operadores
 raiz = processarConsulta(sql)
